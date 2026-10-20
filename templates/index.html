@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refund Assistant Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-headset text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">LangGraph Refund Agent</h1>
+                <p class="text-xs text-slate-400">Automated Order Lookup & Human-in-the-Loop Review System</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span class="w-1.5 h-1.5 mr-1.5 bg-emerald-400 rounded-full animate-pulse"></span> System Online
+            </span>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Left Column: Customer Support Simulation -->
+        <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col shadow-xl">
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+                <h2 class="text-md font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-user text-indigo-400"></i> Customer Request Simulation
+                </h2>
+                <button onclick="generateNewThread()" class="text-xs text-indigo-400 hover:text-indigo-300 underline cursor-pointer">
+                    New Thread ID
+                </button>
+            </div>
+
+            <form id="supportForm" class="space-y-4 flex-1 flex flex-col">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Thread ID</label>
+                    <input type="text" id="threadId" required 
+                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 font-mono text-indigo-300">
+                </div>
+
+                <div class="flex-1 flex flex-col">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Customer Support Message</label>
+                    <textarea id="customerMessage" rows="4" required placeholder="e.g., Hi, I want a refund for order ord_101. It was damaged."
+                              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:outline-none focus:border-indigo-500 resize-none flex-1"></textarea>
+                </div>
+
+                <button type="submit" id="submitBtn"
+                        class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition duration-200 shadow-lg shadow-indigo-600/20 cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Send Request
+                </button>
+            </form>
+
+            <!-- Customer Result Output Box -->
+            <div id="customerResultBox" class="mt-6 hidden bg-slate-950 border border-slate-800 rounded-xl p-4">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Workflow Output</h3>
+                <div id="customerResultContent" class="text-sm space-y-2"></div>
+            </div>
+        </section>
+
+        <!-- Right Column: Human Review Dashboard -->
+        <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col shadow-xl">
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+                <h2 class="text-md font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-amber-400"></i> Human Review & Approval (> $100)
+                </h2>
+                <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-md">Interrupt Handler</span>
+            </div>
+
+            <div class="space-y-4 flex-1 flex flex-col">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Target Thread ID for Review</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="reviewThreadId" placeholder="Enter thread ID awaiting review"
+                               class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500 font-mono text-amber-300">
+                        <button type="button" onclick="loadReviewDetails()" 
+                                class="bg-slate-800 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer">
+                            Check Status
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Review Panel Container -->
+                <div id="reviewPanelContainer" class="flex-1 flex flex-col justify-center items-center border border-dashed border-slate-800 rounded-xl p-6 text-center text-slate-500">
+                    <i class="fa-solid fa-hourglass-empty text-3xl mb-2 text-slate-600"></i>
+                    <p class="text-sm">No active review loaded or thread is not paused at human review.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Script / Interactivity -->
+    <script>
+        // Generate a random thread ID on load
+        function generateNewThread() {
+            document.getElementById('threadId').value = 'thread_' + Math.random().toString(36).substring(2, 9);
+        }
+        window.onload = generateNewThread;
+
+        // Handle Customer Support Submission
+        document.getElementById('supportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const thread_id = document.getElementById('threadId').value;
+            const message = document.getElementById('customerMessage').value;
+            const btn = document.getElementById('submitBtn');
+            const resultBox = document.getElementById('customerResultBox');
+            const resultContent = document.getElementById('customerResultContent');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Processing...';
+
+            try {
+                const response = await fetch('/support', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ thread_id, message })
+                });
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.detail || 'Something went wrong');
+
+                resultBox.classList.remove('hidden');
+                let statusBadge = data.status === 'awaiting_approval' 
+                    ? '<span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-xs font-semibold">Awaiting Approval (> $100)</span>'
+                    : '<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-xs font-semibold">Completed</span>';
+
+                resultContent.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Status:</span> ${statusBadge}
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-slate-400 block text-xs mb-1">Agent Response:</span>
+                        <p class="bg-slate-900 p-3 rounded-lg border border-slate-800 text-slate-200">${data.response || 'Workflow paused for manual review.'}</p>
+                    </div>
+                `;
+
+                // If awaiting approval, auto-populate the review thread ID
+                if (data.status === 'awaiting_approval') {
+                    document.getElementById('reviewThreadId').value = thread_id;
+                    loadReviewDetails();
+                }
+
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Request';
+            }
+        });
+
+        // Load Review Details & Interrupt payload
+        async function loadReviewDetails() {
+            const thread_id = document.getElementById('reviewThreadId').value.trim();
+            const container = document.getElementById('reviewPanelContainer');
+            if (!thread_id) {
+                alert('Please enter a thread ID');
+                return;
+            }
+
+            container.innerHTML = '<i class="fa-solid fa-spinner animate-spin text-2xl text-indigo-400"></i>';
+
+            try {
+                // Since there isn't a dedicated get-state route, we can query via support or check status logic if available, 
+                // Alternatively, we render the approve/reject action controls directly for the given thread_id.
+                container.innerHTML = `
+                    <div class="w-full text-left space-y-4">
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                            <span class="text-xs text-slate-400 block mb-1">Review Target Thread:</span>
+                            <span class="font-mono text-amber-400 text-sm">${thread_id}</span>
+                        </div>
+                        <p class="text-xs text-slate-400">Review order details and decide whether to approve or reject the refund request exceeding $100.</p>
+                        <div class="flex gap-3 pt-2">
+                            <button onclick="submitReview('${thread_id}', true)" 
+                                    class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-medium transition cursor-pointer shadow-lg shadow-emerald-600/20">
+                                <i class="fa-solid fa-check mr-1"></i> Approve Refund
+                            </button>
+                            <button onclick="submitReview('${thread_id}', false)" 
+                                    class="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-xl text-sm font-medium transition cursor-pointer shadow-lg shadow-rose-600/20">
+                                <i class="fa-solid fa-xmark mr-1"></i> Reject Refund
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                container.innerHTML = `<p class="text-rose-400 text-sm">Failed to load review details.</p>`;
+            }
+        }
+
+        // Submit Approval Decision
+        async function submitReview(thread_id, approved) {
+            const container = document.getElementById('reviewPanelContainer');
+            container.innerHTML = '<i class="fa-solid fa-spinner animate-spin text-2xl text-indigo-400"></i> Submitting decision...';
+
+            try {
+                const response = await fetch(`/review/${thread_id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ approved })
+                });
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.detail || 'Failed to submit review');
+
+                container.innerHTML = `
+                    <div class="text-center space-y-2">
+                        <i class="fa-solid fa-circle-check text-4xl text-emerald-400"></i>
+                        <h4 class="text-sm font-semibold text-slate-200">Review Processed Successfully</h4>
+                        <p class="text-xs bg-slate-950 p-3 rounded-lg border border-slate-800 text-slate-300 mt-2">${data.response || 'Refund workflow completed.'}</p>
+                    </div>
+                `;
+            } catch (err) {
+                container.innerHTML = `<p class="text-rose-400 text-sm">Error: ${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
